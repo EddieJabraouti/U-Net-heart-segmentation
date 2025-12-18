@@ -164,12 +164,18 @@ for epoch in range(num_epochs):
         running_loss += loss.item()
     print(f"Epoch {epoch + 1}/{num_epochs} - loss: {running_loss / len(train_load):.4f}")
 
-
+    """""
     model.eval()
-    test_masks, test_pred = [], []
+    test_masks, test_seg = [], []
     with torch.no_grad(): #with no gradients to save mem
         for images, masks in test_load:
             images = images.to(device, non_blocking=True)
+            outputs = model(images)
+            #get generated segmentation
+            #get Ground truth segmentation
+        accuracy = accuracy_score(ground truth seg, generated seg)
+        print(f"Test Accuracy: {accuracy: .4f}")
+    """""
 
 
 
