@@ -108,7 +108,14 @@ class UNet3D(net.module):
     def __init__(self, in_channels=1, num_classes = 4, base_filters=32):
         super().__init__()
 
+#loading data for test, val, test
 
+train_set = HeartSegmentationDataset('')
+
+
+train_load = DataLoader()
+val_load
+test_load
 
 
 #Model:
@@ -122,7 +129,7 @@ num_epochs = 16
 for epoch in range(num_epochs):
     model.train()
     running_loss = 0.0
-    for images, masks in DataLoader:
+    for images, masks in train_load:
         images = images.to(device)
         masks = masks.to(device)
 
