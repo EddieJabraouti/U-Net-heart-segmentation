@@ -84,10 +84,55 @@ class DoubleConv3D(net.module):
             net.BatchNorm3d(out_channels),
             net.ReLU(inplace=True)
             )
-        
+
+
+class DiceLoss(net.module):
+    def __init__(self, smooth=1e-6):
+        super().__init__()
+
+    def forward(self, logits, targets):
+        probs = torch.softmax(logits, dim=1)
+        targets = (torch.net.functional.one_hot(
+            targets, num_classes=probs.shape[1]
+        ).permute(0,4,1,2,3).float())
+
+        intersection = (probs * targets).sum(dim=(2, 3, 4))
+        union = probs.sum(dim=(2, 3, 4)) + targets.sum(dim=(2, 3, 4))
+
+        dice = (2 * intersection + self.smooth) / (union + self.smooth)
+        return 1 - dice.mean()
+
+
+
 class UNet3D(net.module):
     def __init__(self, in_channels=1, num_classes = 4, base_filters=32):
         super().__init__()
+
+
+
+
+#Model:
+model = UNet3D(in_channels=1, num_classes=4, base_filters=32).to(device)
+criterion = DiceLoss()
+optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+
+#Training loop:
+num_epochs = 16
+
+for epoch in range(num_epochs):
+    model.train()
+    running_loss = 0.0
+    for images, masks in DataLoader:
+        images = images.to(device)
+        masks = masks.to(device)
+
+        optimizer.zero_grad()
+        outputs = model(images)
+        loss = criterion(outputs, masks)
+        loss.backward()
+        optimizer.step()
+        running_loss += loss.item()
+    print(f"Epoch {epoch + 1}/{num_epochs} - loss: {running_loss / len(train_load):.4f}")
 
 
 
