@@ -27,23 +27,28 @@ class HeartSegmentationDataset(Dataset): #processing data for model input
             if not os.path.isdir(patient_dir):
                 continue
 
-            for fname in os.listdir(patient_dir):
-                #Select only ED/ES image (not 4d or gt)
-                if(
-                    "frame" in fname
-                    and not fname.endswith("_gt.nii")
-                    and not fname.endswith("_gt.nii.gz")
-                    and not fname.endswith("_4d.nii")
-                ):
-                    img_path = os.path.join(patient_dir, fname)
+            for subdir in os.listdir(patient_dir):
+                subdir_path = os.path.join(patient_dir, subdir)
+                if not os.path.isdir(subdir_path):
+                    continue
 
-                    if fname.endswith(".nii.gz"):
-                        gt_path = img_path.replace(".nii.gz", "_gt.nii.gz")
-                    else:
-                        gt_path = img_path.replace(".nii", "_gt.nii")
+                for fname in os.listdir(patient_dir):
+                    #Select only ED/ES image (not 4d or gt)
+                    if(
+                        "frame" in fname
+                        and not fname.endswith("_gt.nii")
+                        and not fname.endswith("_gt.nii.gz")
+                        and not fname.endswith("_4d.nii")
+                    ):
+                        img_path = os.path.join(patient_dir, fname)
 
-                    if os.path.exists(gt_path):
-                        self.samples.append((img_path, gt_path))
+                        if fname.endswith(".nii.gz"):
+                            gt_path = img_path.replace(".nii.gz", "_gt.nii.gz")
+                        else:
+                            gt_path = img_path.replace(".nii", "_gt.nii")
+
+                        if os.path.exists(gt_path):
+                            self.samples.append((img_path, gt_path))
 
     def __len__(self):
         return len(self.samples)
@@ -110,13 +115,31 @@ class UNet3D(net.module):
 
 #loading data for test, val, test
 
-train_set = HeartSegmentationDataset('')
+#sanity check
+
+ds = HeartSegmentationDataset('database/training')
+print(len(ds))
+img, msk = ds[0]
+print(img.shape, msk.shape) #Should be (1, D, H, W)  (D, H, W)
+
+train_set = HeartSegmentationDataset('database/training')
+test_set = HeartSegmentationDataset('database/testing')
 
 
-train_load = DataLoader()
-val_load
-test_load
-
+train_load = DataLoader(
+    train_set,
+    batch_size=1,
+    shuffle=True,
+    num_workers=4,
+    pin_memory = torch.cuda.is_available()
+)
+test_load = DataLoader(
+    test_set,
+    batch_size=1,
+    shuffle=True,
+    num_workers=4,
+    pin_memory = torch.cuda.is_available()
+)
 
 #Model:
 model = UNet3D(in_channels=1, num_classes=4, base_filters=32).to(device)
@@ -140,6 +163,16 @@ for epoch in range(num_epochs):
         optimizer.step()
         running_loss += loss.item()
     print(f"Epoch {epoch + 1}/{num_epochs} - loss: {running_loss / len(train_load):.4f}")
+
+
+    model.eval()
+    test_masks, test_pred = [], []
+    with torch.no_grad(): #with no gradients to save mem
+        for images, masks in test_load:
+            images = images.to(device, non_blocking=True)
+
+
+
 
 
 
