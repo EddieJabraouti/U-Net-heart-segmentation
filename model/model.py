@@ -108,20 +108,19 @@ class DiceLoss(net.module):
         return 1 - dice.mean()
 
 
-
+#Actual UNet encode/decode architecture implemented in this class
 class UNet3D(net.module):
     def __init__(self, in_channels=1, num_classes = 4, base_filters=32):
         super().__init__()
 
-#loading data for test, val, test
 
 #sanity check
-
 ds = HeartSegmentationDataset('database/training')
 print(len(ds))
 img, msk = ds[0]
 print(img.shape, msk.shape) #Should be (1, D, H, W)  (D, H, W)
 
+#loading data for test, val, test
 train_set = HeartSegmentationDataset('database/training')
 test_set = HeartSegmentationDataset('database/testing')
 
