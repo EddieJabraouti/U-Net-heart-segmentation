@@ -32,7 +32,7 @@ class HeartSegmentationDataset(Dataset): #processing data for model input
                 if not os.path.isdir(subdir_path):
                     continue
 
-                for fname in os.listdir(patient_dir):
+                for fname in os.listdir(subdir_path):
                     #Select only ED/ES image (not 4d or gt)
                     if(
                         "frame" in fname
@@ -76,8 +76,22 @@ class HeartSegmentationDataset(Dataset): #processing data for model input
     #need to use encoder decoder architecture
     #using Dice loss function
 
+
+#Questions i must ask myself
+"""
+-Is my netowork following the downsampling of 2 3x3 convolutions followed by ReLu and a 2x2 max pooling operation with stride 2?
+- Are the number of feature channels being doubled per each downsampling step?
+-Is the upsampling step a 2x2 convolution  that halves the number of feature channels?
+- am i concatentating with the correspondingly cropped feature map, following 2 3x3 convolutions with ReLu for a total of 23 convolutional layers?
+-are we using the input images and their corresponding segmentation masks to train? do i need SGD as part of my optimization
+- Is softmax being used? 
+- Should i introduce a weight map, pre computed(before training) for each ground truth segmentation to compensate different frequency of pixels from a certain class 
+and force the netowrk to learn small seperation borders that we introduce between touching parts of the heart
+-Although it isnt entirely from scratch are my weight being initalized from a gausian distribution with sd: root(2/N), N= #incoming noder per neuron
+
+"""
 #Convolution architecture to be applied to each layer
-class DoubleConv3D(net.module):
+class DoubleConv3D(net.Module):
     def __init__(self, in_channels, out_channels):
         super().__init__()
         self.conv = net.Sequential(
@@ -91,7 +105,7 @@ class DoubleConv3D(net.module):
             )
 
 
-class DiceLoss(net.module):
+class DiceLoss(net.Module):
     def __init__(self, smooth=1e-6):
         super().__init__()
 
@@ -109,9 +123,21 @@ class DiceLoss(net.module):
 
 
 #Actual UNet encode/decode architecture implemented in this class
-class UNet3D(net.module):
+class UNet3D(net.Module):
     def __init__(self, in_channels=1, num_classes = 4, base_filters=32):
         super().__init__()
+        #encode - Multiple Convolutional layers to downsize image and extract features
+
+        self.enc1 = DoubleConv3D(in_channels, base_filters)
+        self.enc2 = DoubleConv3D(in_channels, base_filters * 2)
+        self.enc3 = DoubleConv3D(in_channels * 2, base_filters * 4)
+        self.enc4 = DoubleConv3D(in_channels * 4, base_filters * 8)
+
+        self.pool = net.MaxPool3d(2)
+
+        #bottleneck
+        self.bottleneck = DoubleConv3D(base_filters  * 8, base_filters * 16)
+
 
 
 #sanity check
