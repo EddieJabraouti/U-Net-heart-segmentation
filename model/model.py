@@ -216,30 +216,57 @@ num_epochs = 16
 for epoch in range(num_epochs):
     model.train()
     running_loss = 0.0
+
     for images, masks in train_load:
-        images = images.to(device)
-        masks = masks.to(device)
+        images = images.to(device, non_blocking=True)
+        masks  = masks.to(device, non_blocking=True)
 
         optimizer.zero_grad()
         outputs = model(images)
         loss = criterion(outputs, masks)
         loss.backward()
         optimizer.step()
-        running_loss += loss.item()
-    print(f"Epoch {epoch + 1}/{num_epochs} - loss: {running_loss / len(train_load):.4f}")
 
-    """""
-    model.eval()
-    test_masks, test_seg = [], []
-    with torch.no_grad(): #with no gradients to save mem
-        for images, masks in test_load:
-            images = images.to(device, non_blocking=True)
-            outputs = model(images)
-            #get generated segmentation
-            #get Ground truth segmentation
-        accuracy = accuracy_score(ground truth seg, generated seg)
-        print(f"Test Accuracy: {accuracy: .4f}")
-    """""
+        running_loss += loss.item()
+
+    print(f"Epoch [{epoch+1}/{num_epochs}] "
+          f"Loss: {running_loss / len(train_load):.4f}")
+
+#Testing loop: check the intersection of the generated segmentations and Ground truth.
+
+
+#Dice score per class:
+def dice_per_class(logits, targets, num_classes, smooth=1e-6):
+    preds = torch.argmax(logits, dim=1)
+
+    dice_scores = []
+
+    for c in range(num_classes):
+        pred_c = (preds == c).float()
+        target_c = (targets == c).float()
+
+        intersection = (pred_c * target_c).sum()
+        union = pred_c.sum() + target_c.sum()
+
+        dice = (2 * intersection + smooth) / (union + smooth)
+        dice_scores.append(dice.item())
+
+    return dice_scores
+
+model.eval()
+dice_scores = []
+
+with torch.no_grad():
+    for images, masks in test_load:
+        images = images.to(device)
+        masks  = masks.to(device)
+
+        outputs = model(images)
+        dice = dice_per_class(outputs, masks, num_classes=4)
+        dice_scores.append(dice)
+
+mean_dice = torch.tensor(dice_scores).mean(dim=0) #desired mean of all dice scores is 1 - better overlap between seg and pred
+print("Mean Dice per class:", mean_dice.tolist())
 
 
 
